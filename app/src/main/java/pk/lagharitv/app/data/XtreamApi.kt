@@ -16,7 +16,14 @@ data class XtreamStream(
     val name: String,
     val categoryId: String?,
     val logo: String?,
-    val extension: String?
+    val extension: String?,
+    val plot: String? = null,
+    val rating: String? = null,
+    val genre: String? = null,
+    val releaseDate: String? = null,
+    val duration: String? = null,
+    val director: String? = null,
+    val cast: String? = null
 )
 
 class XtreamApi {
@@ -77,7 +84,15 @@ class XtreamApi {
                 name = item.optString("name", "Untitled"),
                 categoryId = item.optString("category_id").takeIf { it.isNotBlank() && it != "null" },
                 logo = item.optString("stream_icon").takeIf { it.startsWith("http") },
-                extension = item.optString("container_extension").takeIf { it.isNotBlank() && it != "null" }
+                extension = item.optString("container_extension").takeIf { it.isNotBlank() && it != "null" },
+                plot = item.optString("plot").takeIf { it.isNotBlank() && it != "null" },
+                rating = item.optString("rating").takeIf { it.isNotBlank() && it != "null" },
+                genre = item.optString("genre").takeIf { it.isNotBlank() && it != "null" },
+                releaseDate = (item.optString("releaseDate").takeIf { it.isNotBlank() && it != "null" }
+                    ?: item.optString("releasedate").takeIf { it.isNotBlank() && it != "null" }),
+                duration = item.optString("duration").takeIf { it.isNotBlank() && it != "null" },
+                director = item.optString("director").takeIf { it.isNotBlank() && it != "null" },
+                cast = item.optString("cast").takeIf { it.isNotBlank() && it != "null" }
             )
         }
     }
