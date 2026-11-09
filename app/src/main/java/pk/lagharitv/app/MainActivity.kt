@@ -23,6 +23,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.viewinterop.AndroidView
+import coil.compose.AsyncImage
 import androidx.media3.common.MediaItem
 import androidx.media3.common.C
 import androidx.media3.common.Player
@@ -413,7 +414,12 @@ private fun TvApp() {
                         items(shown) { ch ->
                             val channelFocused = remember { mutableStateOf(false) }
                             Card(Modifier.fillMaxWidth()) {
-                                Row(Modifier.fillMaxWidth().padding(10.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Row(Modifier.fillMaxWidth().padding(10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    AsyncImage(
+                                        model = ch.logo,
+                                        contentDescription = ch.name,
+                                        modifier = Modifier.size(width = 64.dp, height = 76.dp)
+                                    )
                                     Column(Modifier.weight(1f)
                                         .onFocusChanged { channelFocused.value = it.isFocused }
                                         .border(
