@@ -84,6 +84,7 @@ private fun TvApp() {
     var selectedSeries by remember { mutableStateOf<XtreamStream?>(null) }
     var selectedSeriesInfo by remember { mutableStateOf<XtreamStream?>(null) }
     var selectedMovie by remember { mutableStateOf<Channel?>(null) }
+    var confirmClearList by remember { mutableStateOf(false) }
     var episodes by remember { mutableStateOf(emptyList<XtreamStream>()) }
     var autoReloadEnabled by remember { mutableStateOf(prefs.getBoolean("auto_reload_m3u", true)) }
     var lastReloadText by remember { mutableStateOf("Playlist reload status: not yet refreshed") }
@@ -410,6 +411,14 @@ private fun TvApp() {
                             OutlinedButton(onClick = { fullscreen = !fullscreen }) { Text(if (fullscreen) "Exit Fullscreen" else "Fullscreen") }
                         }
                     }
+                    if (tab == "Favorites" || tab == "Recently Watched") {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                            TextButton(
+                                enabled = if (tab == "Favorites") fav.isNotEmpty() else recent.isNotEmpty(),
+                                onClick = { confirmClearList = true }
+                            ) { Text(if (tab == "Favorites") "Clear Favorites" else "Clear History") }
+                        }
+                    }
                     OutlinedTextField(query, { query = it }, label = { Text("Search") }, modifier = Modifier.fillMaxWidth())
                     if (availableCategories.isNotEmpty()) {
                         Row(
@@ -539,6 +548,30 @@ private fun TvApp() {
                     }
                 }
             }
+        }
+        if (confirmClearList) {
+            AlertDialog(
+                onDismissRequest = { confirmClearList = false },
+                title = { Text(if (tab == "Favorites") "Clear favorites?" else "Clear watch history?") },
+                text = { Text(if (tab == "Favorites")
+                    "تمام محفوظ پسندیدہ آئٹمز ہٹا دیے جائیں گے۔"
+                    else "Recently Watched کی فہرست خالی ہو جائے گی۔") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        if (tab == "Favorites") {
+                            fav = emptySet()
+                            prefs.edit().remove("fav").apply()
+                        } else {
+                            recent = emptyList()
+                            prefs.edit().remove("recent").apply()
+                        }
+                        confirmClearList = false
+                    }) { Text("Clear") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { confirmClearList = false }) { Text("Cancel") }
+                }
+            )
         }
         if (selectedMovie != null) {
             val movie = selectedMovie!!
