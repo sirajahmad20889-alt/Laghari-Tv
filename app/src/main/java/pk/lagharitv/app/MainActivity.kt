@@ -78,6 +78,7 @@ private fun TvApp() {
     var epgUrl by remember { mutableStateOf(prefs.getString("epg_url", "") ?: "") }
     var epgItems by remember { mutableStateOf(emptyList<EpgProgramme>()) }
     var selectedSeries by remember { mutableStateOf<XtreamStream?>(null) }
+    var selectedMovie by remember { mutableStateOf<Channel?>(null) }
     var episodes by remember { mutableStateOf(emptyList<XtreamStream>()) }
     var autoReloadEnabled by remember { mutableStateOf(prefs.getBoolean("auto_reload_m3u", true)) }
     var lastReloadText by remember { mutableStateOf("Playlist reload status: not yet refreshed") }
@@ -160,7 +161,7 @@ private fun TvApp() {
                 val categories = api.categories(credentials, kind).associate { it.id to it.name }
                 val streams = api.streams(credentials, kind)
                 channels = streams.map { s ->
-                    Channel(s.name, api.playbackUrl(credentials, s, kind), categories[s.categoryId] ?: "Other", s.logo)
+                    Channel(s.name, api.playbackUrl(credentials, s, kind), categories[s.categoryId] ?: "Other", s.logo, null, s.plot, s.rating, s.genre, s.releaseDate, s.duration, s.director, s.cast)
                 }
                 selectedSeries = null
                 episodes = emptyList()
@@ -428,7 +429,9 @@ private fun TvApp() {
                                             shape = RoundedCornerShape(8.dp)
                                         )
                                         .clickable {
-                                        if (tab == "Series" && connected) {
+                                        if (tab == "Movies" && connected) {
+                                            selectedMovie = ch
+                                        } else if (tab == "Series" && connected) {
                                             val series = channels.firstOrNull { it.url == ch.url }
                                             if (series != null) {
                                                 selectedSeries = XtreamStream(series.url.substringAfterLast("/").substringBefore("."), series.name, null, series.logo, null)
@@ -460,6 +463,43 @@ private fun TvApp() {
                     }
                 }
             }
+        }
+        if (selectedMovie != null) {
+            val movie = selectedMovie!!
+            AlertDialog(
+                onDismissRequest = { selectedMovie = null },
+                title = { Text(movie.name) },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        AsyncImage(model = movie.logo, contentDescription = movie.name,
+                            modifier = Modifier.fillMaxWidth().height(180.dp))
+                        movie.genre?.let { Text("Genre: $it") }
+                        movie.releaseDate?.let { Text("Release: $it") }
+                        movie.rating?.let { Text("Rating: $it") }
+                        movie.duration?.let { Text("Duration: $it") }
+                        movie.director?.let { Text("Director: $it") }
+                        movie.cast?.let { Text("Cast: $it") }
+                        movie.plot?.let { Text(it) }
+                        if (listOf(movie.genre, movie.releaseDate, movie.rating, movie.duration,
+                                movie.director, movie.cast, movie.plot).all { it.isNullOrBlank() }) {
+                            Text("اس فلم کی اضافی معلومات فراہم کنندہ نے نہیں بھیجیں۔")
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        active = movie
+                        rememberWatched(movie)
+                        playbackEngine.setMediaItem(MediaItem.fromUri(movie.url))
+                        playbackEngine.prepare()
+                        playbackEngine.play()
+                        selectedMovie = null
+                    }) { Text("Play Movie") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { selectedMovie = null }) { Text("Close") }
+                }
+            )
         }
         if (pinDialog) {
             AlertDialog(
