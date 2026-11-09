@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
@@ -49,7 +50,7 @@ private fun TvApp() {
     var url by remember { mutableStateOf(prefs.getString("m3u", "") ?: "") }
     var server by remember { mutableStateOf(prefs.getString("server", "") ?: "") }
     var user by remember { mutableStateOf(prefs.getString("user", "") ?: "") }
-    var pass by remember { mutableStateOf(prefs.getString("pass", "") ?: "") }
+    var pass by remember { mutableStateOf("") }
     var channels by remember { mutableStateOf(emptyList<Channel>()) }
     var fav by remember { mutableStateOf(prefs.getStringSet("fav", emptySet())?.toSet() ?: emptySet()) }
     var recent by remember { mutableStateOf(prefs.getStringSet("recent", emptySet())?.toList()?.take(50) ?: emptyList()) }
@@ -151,13 +152,13 @@ private fun TvApp() {
                     Text("Xtream Codes")
                     OutlinedTextField(server, { server = it }, label = { Text("HTTPS server URL") }, modifier = Modifier.fillMaxWidth())
                     OutlinedTextField(user, { user = it }, label = { Text("Username") }, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(pass, { pass = it }, label = { Text("Password") }, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(pass, { pass = it }, label = { Text("Password") }, visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth())
                     Button(enabled = !busy, onClick = {
                         scope.launch {
                             busy = true
                             try {
                                 check(api.authenticate(XtreamCredentials(server, user, pass))) { "Login rejected" }
-                                prefs.edit().putString("server", server).putString("user", user).putString("pass", pass).apply()
+                                prefs.edit().putString("server", server).putString("user", user).remove("pass").apply()
                                 connected = true
                                 status = "Xtream login successful."
                             } catch (e: Exception) { status = "Login error: ${e.message}" }
@@ -165,6 +166,7 @@ private fun TvApp() {
                         }
                     }) { Text("Connect Xtream") }
                     Text(status, color = Color.LightGray)
+                    Text("پاس ورڈ اس ڈیوائس پر محفوظ نہیں کیا جاتا؛ ایپ دوبارہ کھولنے پر دوبارہ درج کریں۔", color = Color.Gray)
                     Text("صرف اپنی یا مجاز سروس استعمال کریں۔", color = Color.Gray)
                 } else {
                     Text(status, color = Color.LightGray)
