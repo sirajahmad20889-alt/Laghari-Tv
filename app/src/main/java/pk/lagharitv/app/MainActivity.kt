@@ -72,6 +72,8 @@ private fun TvApp() {
     var epgItems by remember { mutableStateOf(emptyList<EpgProgramme>()) }
     var selectedSeries by remember { mutableStateOf<XtreamStream?>(null) }
     var episodes by remember { mutableStateOf(emptyList<XtreamStream>()) }
+    var autoReloadEnabled by remember { mutableStateOf(prefs.getBoolean("auto_reload_m3u", true)) }
+    var lastReloadText by remember { mutableStateOf("Playlist reload status: not yet refreshed") }
     val playlistFilePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) scope.launch {
             busy = true
@@ -113,6 +115,24 @@ private fun TvApp() {
         }
     }
 
+    suspend fun reloadSavedM3u(): String {
+        val savedUrl = prefs.getString("m3u", null)?.trim().orEmpty()
+        require(savedUrl.startsWith("https://", true)) { "Saved HTTPS M3U URL not found" }
+        val raw = withContext(Dispatchers.IO) {
+            val client = OkHttpClient.Builder().connectTimeout(15, TimeUnit.SECONDS)
+                .readTimeout(45, TimeUnit.SECONDS).build()
+            client.newCall(Request.Builder().url(savedUrl).build()).execute().use {
+                check(it.isSuccessful) { "HTTP ${it.code}" }
+                it.body?.string() ?: error("Empty playlist")
+            }
+        }
+        val refreshed = M3uParser.parse(raw)
+        check(refreshed.isNotEmpty()) { "Playlist returned no channels" }
+        channels = refreshed
+        url = savedUrl
+        lastReloadText = "Last refreshed: " + DateFormat.getTimeInstance(DateFormat.SHORT).format(Date()) + " · " + refreshed.size + " channels"
+        return "Playlist refreshed: " + refreshed.size + " channels."
+    }
     fun rememberWatched(channel: Channel) {
         recent = (listOf(channel.url) + recent.filterNot { it == channel.url }).take(50)
         prefs.edit().putStringSet("recent", recent.toSet()).apply()
@@ -139,6 +159,14 @@ private fun TvApp() {
 
     val shown = channels.filter {
         it.name.contains(query, true) && when (tab) { "Favorites" -> it.url in fav; "Recently Watched" -> it.url in recent; else -> true }
+    }
+    LaunchedEffect(autoReloadEnabled) {
+        if (autoReloadEnabled && prefs.getString("m3u", null) != null) {
+            busy = true
+            status = try { reloadSavedM3u() }
+            catch (e: Exception) { "Automatic playlist reload failed: ${e.message}" }
+            busy = false
+        }
     }
     MaterialTheme(colorScheme = darkColorScheme(background = bg, surface = panel, primary = accent)) {
         Column(Modifier.fillMaxSize().background(bg).padding(10.dp)) {
@@ -226,6 +254,23 @@ private fun TvApp() {
                     Text("صرف اپنی یا مجاز سروس استعمال کریں۔", color = Color.Gray)
                 } else {
                     Text(status, color = Color.LightGray)
+                    if (tab == "Live TV" && prefs.getString("m3u", null) != null) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(enabled = !busy, onClick = {
+                                scope.launch {
+                                    busy = true
+                                    status = try { reloadSavedM3u() }
+                                    catch (e: Exception) { "Playlist reload error: ${e.message}" }
+                                    busy = false
+                                }
+                            }) { Text("Refresh Playlist") }
+                            TextButton(onClick = {
+                                autoReloadEnabled = !autoReloadEnabled
+                                prefs.edit().putBoolean("auto_reload_m3u", autoReloadEnabled).apply()
+                            }) { Text(if (autoReloadEnabled) "Auto reload: ON" else "Auto reload: OFF") }
+                        }
+                        Text(lastReloadText, color = Color.Gray)
+                    }
                     if (active != null) {
                         Text("Playing: ${active!!.name}", color = accent)
                         Text(playerStatus, color = Color.LightGray)
