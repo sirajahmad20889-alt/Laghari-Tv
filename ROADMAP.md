@@ -1,15 +1,26 @@
 # Laghari TV roadmap
 
-- [x] Android app skeleton and TV launcher support
-- [x] Remote-friendly navigation starter
-- [x] M3U EXTINF parser
-- [x] HTTPS Xtream authentication scaffold
-- [ ] M3U URL and local-file import UI
-- [ ] Xtream Live/VOD/Series category and item loading
-- [ ] Media3 player screen, controls, retry and track selection
-- [ ] Favorites and recently watched persistence
-- [ ] XMLTV EPG and programme timeline
-- [ ] Catch-up where supported by the authorized provider
-- [ ] TV D-pad focus polish, search and channel zapping
+## Implemented
+- [x] Android phone and Android TV launcher support
+- [x] Compose navigation and dark interface
+- [x] M3U EXTINF parser and HTTPS playlist URL import
+- [x] HTTPS Xtream authentication
+- [x] Xtream Live TV, VOD, and Series catalogue loading
+- [x] Xtream category-name mapping
+- [x] Series episode lookup through get_series_info
+- [x] Media3 ExoPlayer playback controls
+- [x] Search and persisted favorites
+
+## Remaining before a production-ready release
+- [ ] XMLTV EPG parsing and programme timeline
+- [ ] Catch-up playback where supported by the authorized provider
+- [ ] Subtitles and audio-track selection UI
+- [ ] Local-file playlist import and automatic playlist reload
+- [ ] Recently watched history
 - [ ] Parental controls and PIN-protected settings
-- [ ] App icon, accessibility, tests and signed release build
+- [ ] TV D-pad focus, channel zapping, and phone portrait layout polish
+- [ ] Robust playback errors, retry, and stream format compatibility
+- [ ] Unit/UI tests and real-device testing
+- [ ] App icon, versioning, and signed release APK/AAB
+
+A successful GitHub Actions build verifies compilation and artifact upload only; it does not replace provider-specific or physical-device testing.
