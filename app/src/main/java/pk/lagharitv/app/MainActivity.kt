@@ -67,6 +67,7 @@ private fun TvApp() {
     var fav by remember { mutableStateOf(prefs.getStringSet("fav", emptySet())?.toSet() ?: emptySet()) }
     var recent by remember { mutableStateOf(prefs.getStringSet("recent", emptySet())?.toList()?.take(50) ?: emptyList()) }
     var query by remember { mutableStateOf("") }
+    var selectedCategory by remember { mutableStateOf("All") }
     var status by remember { mutableStateOf("Settings میں مجاز M3U یا Xtream اکاؤنٹ شامل کریں۔") }
     var busy by remember { mutableStateOf(false) }
     var active by remember { mutableStateOf<Channel?>(null) }
@@ -169,8 +170,11 @@ private fun TvApp() {
         }
     }
 
+    val availableCategories = channels.map { it.group?.takeIf(String::isNotBlank) ?: "Other" }.distinct().sorted()
     val shown = channels.filter {
-        it.name.contains(query, true) && when (tab) { "Favorites" -> it.url in fav; "Recently Watched" -> it.url in recent; else -> true }
+        it.name.contains(query, true) &&
+            (selectedCategory == "All" || (it.group?.takeIf(String::isNotBlank) ?: "Other") == selectedCategory) &&
+            when (tab) { "Favorites" -> it.url in fav; "Recently Watched" -> it.url in recent; else -> true }
     }
     LaunchedEffect(autoReloadEnabled) {
         if (autoReloadEnabled && prefs.getString("m3u", null) != null) {
@@ -369,6 +373,21 @@ private fun TvApp() {
                         }
                     }
                     OutlinedTextField(query, { query = it }, label = { Text("Search") }, modifier = Modifier.fillMaxWidth())
+                    if (availableCategories.isNotEmpty()) {
+                        Row(
+                            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            (listOf("All") + availableCategories).forEach { category ->
+                                TextButton(
+                                    onClick = { selectedCategory = category },
+                                    colors = ButtonDefaults.textButtonColors(
+                                        contentColor = if (selectedCategory == category) accent else Color.LightGray
+                                    )
+                                ) { Text(category, maxLines = 1) }
+                            }
+                        }
+                    }
                     if (selectedSeries != null) {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             TextButton(onClick = { selectedSeries = null; episodes = emptyList() }) { Text("← Series") }
