@@ -96,6 +96,28 @@ class XtreamApi {
             )
         }
     }
+    suspend fun movieDetails(c: XtreamCredentials, movieId: String): XtreamStream? {
+        val root = JSONObject(get(apiUrl(c, "get_vod_info") + "&vod_id=${segment(movieId)}"))
+        val info = root.optJSONObject("info") ?: return null
+        val movie = root.optJSONObject("movie_data")
+        return XtreamStream(
+            id = movieId,
+            name = movie?.optString("name")?.takeIf { !it.isNullOrBlank() && it != "null" }
+                ?: info.optString("name", "Movie"),
+            categoryId = null,
+            logo = info.optString("movie_image").takeIf { it.startsWith("http") }
+                ?: info.optString("cover_big").takeIf { it.startsWith("http") },
+            extension = movie?.optString("container_extension")?.takeIf { !it.isNullOrBlank() && it != "null" },
+            plot = info.optString("plot").takeIf { it.isNotBlank() && it != "null" },
+            rating = info.optString("rating").takeIf { it.isNotBlank() && it != "null" },
+            genre = info.optString("genre").takeIf { it.isNotBlank() && it != "null" },
+            releaseDate = info.optString("releasedate").takeIf { it.isNotBlank() && it != "null" },
+            duration = info.optString("duration").takeIf { it.isNotBlank() && it != "null" },
+            director = info.optString("director").takeIf { it.isNotBlank() && it != "null" },
+            cast = info.optString("cast").takeIf { it.isNotBlank() && it != "null" }
+        )
+    }
+
     suspend fun seriesDetails(c: XtreamCredentials, seriesId: String): XtreamStream? {
         val root = JSONObject(get(apiUrl(c, "get_series_info") + "&series_id=${segment(seriesId)}"))
         val info = root.optJSONObject("info") ?: return null
