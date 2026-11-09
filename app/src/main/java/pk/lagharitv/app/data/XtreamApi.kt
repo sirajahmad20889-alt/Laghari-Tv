@@ -4,27 +4,90 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import org.json.JSONArray
 import org.json.JSONObject
 import java.net.URLEncoder
 import java.util.concurrent.TimeUnit
 
 data class XtreamCredentials(val server: String, val username: String, val password: String)
+data class XtreamCategory(val id: String, val name: String)
+data class XtreamStream(
+    val id: String,
+    val name: String,
+    val categoryId: String?,
+    val logo: String?,
+    val extension: String?
+)
 
 class XtreamApi {
     private val client = OkHttpClient.Builder()
-        .connectTimeout(15, TimeUnit.SECONDS).readTimeout(30, TimeUnit.SECONDS).build()
+        .connectTimeout(15, TimeUnit.SECONDS)
+        .readTimeout(45, TimeUnit.SECONDS)
+        .callTimeout(60, TimeUnit.SECONDS)
+        .build()
 
-    suspend fun authenticate(credentials: XtreamCredentials): Boolean = withContext(Dispatchers.IO) {
-        val base = credentials.server.trimEnd('/')
-        require(base.startsWith("https://")) { "Use an HTTPS server URL." }
-        val user = URLEncoder.encode(credentials.username, Charsets.UTF_8.name())
-        val pass = URLEncoder.encode(credentials.password, Charsets.UTF_8.name())
-        val request = Request.Builder()
-            .url("$base/player_api.php?username=$user&password=$pass").get().build()
+    private fun segment(value: String) = URLEncoder.encode(value, Charsets.UTF_8.name())
+    private fun base(credentials: XtreamCredentials): String {
+        val value = credentials.server.trim().trimEnd('/')
+        require(value.startsWith("https://", true)) { "Use an HTTPS server URL." }
+        return value
+    }
+    private fun apiUrl(c: XtreamCredentials, action: String? = null): String {
+        val query = "username=${segment(c.username)}&password=${segment(c.password)}"
+        return "${base(c)}/player_api.php?$query" +
+            (action?.let { "&action=${segment(it)}" } ?: "")
+    }
+    private suspend fun get(url: String): String = withContext(Dispatchers.IO) {
+        val request = Request.Builder().url(url).header("Accept", "application/json").get().build()
         client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) return@withContext false
-            val body = response.body?.string() ?: return@withContext false
-            JSONObject(body).optJSONObject("user_info")?.optString("auth") == "1"
+            check(response.isSuccessful) { "Server returned HTTP ${response.code}" }
+            response.body?.string() ?: error("Empty server response")
         }
+    }
+    suspend fun authenticate(credentials: XtreamCredentials): Boolean {
+        require(credentials.username.isNotBlank() && credentials.password.isNotBlank()) {
+            "Enter username and password."
+        }
+        val json = JSONObject(get(apiUrl(credentials)))
+        return json.optJSONObject("user_info")?.optString("auth") == "1"
+    }
+    suspend fun categories(c: XtreamCredentials, kind: String): List<XtreamCategory> {
+        val action = when (kind) {
+            "live" -> "get_live_categories"
+            "movie" -> "get_vod_categories"
+            else -> "get_series_categories"
+        }
+        return parseArray(get(apiUrl(c, action))).mapNotNull { item ->
+            val id = item.optString("category_id")
+            if (id.isBlank() || id == "null") null
+            else XtreamCategory(id, item.optString("category_name", "Other"))
+        }
+    }
+    suspend fun streams(c: XtreamCredentials, kind: String): List<XtreamStream> {
+        val action = when (kind) {
+            "live" -> "get_live_streams"
+            "movie" -> "get_vod_streams"
+            else -> "get_series"
+        }
+        return parseArray(get(apiUrl(c, action))).mapNotNull { item ->
+            val id = item.optString(if (kind == "series") "series_id" else "stream_id")
+            if (id.isBlank() || id == "null") null
+            else XtreamStream(
+                id = id,
+                name = item.optString("name", "Untitled"),
+                categoryId = item.optString("category_id").takeIf { it.isNotBlank() && it != "null" },
+                logo = item.optString("stream_icon").takeIf { it.startsWith("http") },
+                extension = item.optString("container_extension").takeIf { it.isNotBlank() && it != "null" }
+            )
+        }
+    }
+    fun playbackUrl(c: XtreamCredentials, stream: XtreamStream, kind: String): String {
+        val folder = when (kind) { "live" -> "live"; "movie" -> "movie"; else -> "series" }
+        val ext = stream.extension ?: if (kind == "live") "ts" else "mp4"
+        return "${base(c)}/$folder/${segment(c.username)}/${segment(c.password)}/${stream.id}.$ext"
+    }
+    private fun parseArray(raw: String): List<JSONObject> {
+        val array = JSONArray(raw)
+        return (0 until array.length()).mapNotNull { array.optJSONObject(it) }
     }
 }
