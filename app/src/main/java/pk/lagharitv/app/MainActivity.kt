@@ -79,6 +79,7 @@ private fun TvApp() {
     var pinHash by remember { mutableStateOf(prefs.getString("parental_pin_hash", "") ?: "") }
     var pinSetup by remember { mutableStateOf("") }
     var pinDialog by remember { mutableStateOf(false) }
+    var pinManagementUnlocked by remember { mutableStateOf(false) }
     var pinEntry by remember { mutableStateOf("") }
     var lockedDestination by remember { mutableStateOf("") }
     fun digestPin(value: String): String = MessageDigest.getInstance("SHA-256").digest(value.toByteArray()).joinToString("") { "%02x".format(it) }
@@ -254,16 +255,30 @@ private fun TvApp() {
                         visualTransformation = PasswordVisualTransformation(),
                         modifier = Modifier.fillMaxWidth())
                     Button(enabled = pinSetup.length in 4..6, onClick = {
-                        pinHash = digestPin(pinSetup)
-                        prefs.edit().putString("parental_pin_hash", pinHash).apply()
-                        pinSetup = ""
-                        status = "Parental PIN is enabled for Movies and Series."
+                        if (pinHash.isNotBlank() && !pinManagementUnlocked) {
+                            lockedDestination = "manage"
+                            pinEntry = ""
+                            pinDialog = true
+                        } else {
+                            pinHash = digestPin(pinSetup)
+                            prefs.edit().putString("parental_pin_hash", pinHash).apply()
+                            pinSetup = ""
+                            pinManagementUnlocked = false
+                            status = "Parental PIN is enabled for Movies and Series."
+                        }
                     }) { Text("Set / Change PIN") }
                     if (pinHash.isNotBlank()) {
                         TextButton(onClick = {
-                            pinHash = ""
-                            prefs.edit().remove("parental_pin_hash").apply()
-                            status = "Parental PIN disabled."
+                            if (!pinManagementUnlocked) {
+                                lockedDestination = "manage"
+                                pinEntry = ""
+                                pinDialog = true
+                            } else {
+                                pinHash = ""
+                                pinManagementUnlocked = false
+                                prefs.edit().remove("parental_pin_hash").apply()
+                                status = "Parental PIN disabled."
+                            }
                         }) { Text("Disable PIN") }
                     }
                     Text("PIN will be required to open Movies and Series.", color = Color.Gray)
@@ -420,9 +435,14 @@ private fun TvApp() {
                             val destination = lockedDestination
                             pinDialog = false
                             lockedDestination = ""
-                            tab = destination
-                            if (connected && destination == "Movies") loadXtream("movie")
-                            if (connected && destination == "Series") loadXtream("series")
+                            if (destination == "manage") {
+                                pinManagementUnlocked = true
+                                status = "PIN verified. You can now change or disable it in Settings."
+                            } else {
+                                tab = destination
+                                if (connected && destination == "Movies") loadXtream("movie")
+                                if (connected && destination == "Series") loadXtream("series")
+                            }
                         } else { status = "Incorrect PIN. Try again." }
                     }) { Text("Unlock") }
                 },
