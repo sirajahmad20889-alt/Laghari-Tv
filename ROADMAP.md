@@ -22,6 +22,7 @@
 - [ ] TV D-pad focus, channel zapping, and phone portrait layout polish
 - [ ] Robust playback errors, retry, and stream format compatibility
 - [ ] Unit/UI tests and real-device testing
+- [x] Avoid plaintext storage of Xtream passwords
 - [ ] App icon, versioning, and signed release APK/AAB
 
 A successful GitHub Actions build verifies compilation and artifact upload only; it does not replace provider-specific or physical-device testing.
