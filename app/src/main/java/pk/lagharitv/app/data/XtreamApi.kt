@@ -81,6 +81,30 @@ class XtreamApi {
             )
         }
     }
+    suspend fun seriesEpisodes(c: XtreamCredentials, seriesId: String): List<XtreamStream> {
+        val raw = get(apiUrl(c, "get_series_info") + "&series_id=${segment(seriesId)}")
+        val root = JSONObject(raw)
+        val episodes = root.optJSONObject("episodes") ?: return emptyList()
+        val result = mutableListOf<XtreamStream>()
+        val seasons = episodes.keys()
+        while (seasons.hasNext()) {
+            val season = episodes.optJSONArray(seasons.next()) ?: continue
+            for (index in 0 until season.length()) {
+                val item = season.optJSONObject(index) ?: continue
+                val id = item.optString("id")
+                if (id.isBlank() || id == "null") continue
+                result += XtreamStream(
+                    id = id,
+                    name = item.optString("title", "Episode"),
+                    categoryId = null,
+                    logo = item.optString("info").takeIf { it.startsWith("http") },
+                    extension = item.optString("container_extension").takeIf { it.isNotBlank() && it != "null" }
+                )
+            }
+        }
+        return result
+    }
+
     fun playbackUrl(c: XtreamCredentials, stream: XtreamStream, kind: String): String {
         val folder = when (kind) { "live" -> "live"; "movie" -> "movie"; else -> "series" }
         val ext = stream.extension ?: if (kind == "live") "ts" else "mp4"
