@@ -6,6 +6,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
@@ -16,6 +17,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -194,7 +197,7 @@ private fun TvApp() {
                             if (connected && item == "Movies") loadXtream("movie")
                             if (connected && item == "Series") loadXtream("series")
                         }
-                    }) { Text(item, maxLines = 1) }
+                    }, colors = ButtonDefaults.buttonColors(containerColor = if (tab == item) accent else panel)) { Text(item, maxLines = 1) }
                 }
             }
             Column(Modifier.fillMaxSize()) {
@@ -385,9 +388,17 @@ private fun TvApp() {
                     if (shown.isEmpty() && selectedSeries == null) Text("M3U import کریں یا Xtream connect کریں۔", color = Color.LightGray)
                     LazyColumn(verticalArrangement = Arrangement.spacedBy(5.dp)) {
                         items(shown) { ch ->
+                            val channelFocused = remember { mutableStateOf(false) }
                             Card(Modifier.fillMaxWidth()) {
                                 Row(Modifier.fillMaxWidth().padding(10.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                                    Column(Modifier.weight(1f).clickable {
+                                    Column(Modifier.weight(1f)
+                                        .onFocusChanged { channelFocused.value = it.isFocused }
+                                        .border(
+                                            width = if (channelFocused.value) 2.dp else 0.dp,
+                                            color = if (channelFocused.value) accent else Color.Transparent,
+                                            shape = RoundedCornerShape(8.dp)
+                                        )
+                                        .clickable {
                                         if (tab == "Series" && connected) {
                                             val series = channels.firstOrNull { it.url == ch.url }
                                             if (series != null) {
