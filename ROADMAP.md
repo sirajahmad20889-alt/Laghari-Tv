@@ -17,7 +17,7 @@
 - [ ] Subtitles and audio-track selection UI
 - [x] Local M3U playlist file import
 - [ ] Automatic playlist reload
-- [ ] Recently watched history
+- [x] Recently watched history
 - [ ] Parental controls and PIN-protected settings
 - [ ] TV D-pad focus, channel zapping, and phone portrait layout polish
 - [ ] Robust playback errors, retry, and stream format compatibility
