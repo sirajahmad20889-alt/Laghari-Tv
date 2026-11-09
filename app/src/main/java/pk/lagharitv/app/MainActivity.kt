@@ -55,8 +55,8 @@ private fun TvApp() {
     var busy by remember { mutableStateOf(false) }
     var active by remember { mutableStateOf<Channel?>(null) }
     var connected by remember { mutableStateOf(false) }
-    val player = remember { ExoPlayer.Builder(ctx).build() }
-    DisposableEffect(player) { onDispose { player.release() } }
+    val playbackEngine = remember { ExoPlayer.Builder(ctx).build() }
+    DisposableEffect(player) { onDispose { playbackEngine.release() } }
 
     fun loadXtream(kind: String) {
         scope.launch {
@@ -140,12 +140,12 @@ private fun TvApp() {
                     Text(status, color = Color.LightGray)
                     if (active != null) {
                         Text("Playing: ${active!!.name}", color = accent)
-                        AndroidView(factory = { PlayerView(it).apply { this.player = player } },
+                        AndroidView(factory = { PlayerView(it).apply { this.player = playbackEngine } },
                             modifier = Modifier.fillMaxWidth().height(190.dp))
                         Row {
-                            Button(onClick = { player.play() }) { Text("Play") }
-                            OutlinedButton(onClick = { player.pause() }) { Text("Pause") }
-                            OutlinedButton(onClick = { player.stop(); active = null }) { Text("Close") }
+                            Button(onClick = { playbackEngine.play() }) { Text("Play") }
+                            OutlinedButton(onClick = { playbackEngine.pause() }) { Text("Pause") }
+                            OutlinedButton(onClick = { playbackEngine.stop(); active = null }) { Text("Close") }
                         }
                     }
                     OutlinedTextField(query, { query = it }, label = { Text("Search") }, modifier = Modifier.fillMaxWidth())
@@ -156,9 +156,9 @@ private fun TvApp() {
                                 Row(Modifier.fillMaxWidth().padding(10.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                                     Column(Modifier.weight(1f).clickable {
                                         active = ch
-                                        player.setMediaItem(MediaItem.fromUri(ch.url))
-                                        player.prepare()
-                                        player.play()
+                                        playbackEngine.setMediaItem(MediaItem.fromUri(ch.url))
+                                        playbackEngine.prepare()
+                                        playbackEngine.play()
                                     }) {
                                         Text(ch.name, color = Color.White)
                                         Text(ch.group ?: "Other", color = Color.LightGray)
