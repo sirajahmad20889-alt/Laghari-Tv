@@ -328,7 +328,7 @@ private fun TvApp() {
                             this.player = playbackEngine
                             useController = true
                             controllerAutoShow = true
-                        } }, modifier = Modifier.fillMaxWidth().height(210.dp))
+                        } }, modifier = if (fullscreen) Modifier.fillMaxWidth().weight(1f) else Modifier.fillMaxWidth().height(210.dp))
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             OutlinedButton(onClick = {
                                 TrackSelectionDialogBuilder(ctx, "Audio tracks", playbackEngine, C.TRACK_TYPE_AUDIO)
@@ -342,7 +342,8 @@ private fun TvApp() {
                         Row {
                             Button(onClick = { playbackEngine.prepare(); playbackEngine.play() }) { Text("Retry / Play") }
                             OutlinedButton(onClick = { playbackEngine.pause() }) { Text("Pause") }
-                            OutlinedButton(onClick = { playbackEngine.stop(); active = null }) { Text("Close") }
+                            OutlinedButton(onClick = { playbackEngine.stop(); active = null; fullscreen = false }) { Text("Close") }
+                            OutlinedButton(onClick = { fullscreen = !fullscreen }) { Text(if (fullscreen) "Exit Fullscreen" else "Fullscreen") }
                         }
                     }
                     OutlinedTextField(query, { query = it }, label = { Text("Search") }, modifier = Modifier.fillMaxWidth())
