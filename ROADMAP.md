@@ -15,7 +15,8 @@
 - [ ] XMLTV EPG parsing and programme timeline
 - [ ] Catch-up playback where supported by the authorized provider
 - [ ] Subtitles and audio-track selection UI
-- [ ] Local-file playlist import and automatic playlist reload
+- [x] Local M3U playlist file import
+- [ ] Automatic playlist reload
 - [ ] Recently watched history
 - [ ] Parental controls and PIN-protected settings
 - [ ] TV D-pad focus, channel zapping, and phone portrait layout polish
