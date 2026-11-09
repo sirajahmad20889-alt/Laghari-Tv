@@ -30,6 +30,8 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import pk.lagharitv.app.data.*
 import java.util.concurrent.TimeUnit
+import java.text.DateFormat
+import java.util.Date
 
 private val bg = Color(0xFF10121B)
 private val panel = Color(0xFF1B2030)
@@ -62,6 +64,8 @@ private fun TvApp() {
     var active by remember { mutableStateOf<Channel?>(null) }
     var connected by remember { mutableStateOf(false) }
     var playerStatus by remember { mutableStateOf("Player ready") }
+    var epgUrl by remember { mutableStateOf(prefs.getString("epg_url", "") ?: "") }
+    var epgItems by remember { mutableStateOf(emptyList<EpgProgramme>()) }
     var selectedSeries by remember { mutableStateOf<XtreamStream?>(null) }
     var episodes by remember { mutableStateOf(emptyList<XtreamStream>()) }
     val playlistFilePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -173,6 +177,30 @@ private fun TvApp() {
                         }
                     }) { Text("Import M3U") }
                     Divider()
+                    Text("EPG / XMLTV Guide")
+                    OutlinedTextField(epgUrl, { epgUrl = it }, label = { Text("HTTPS XMLTV URL") }, modifier = Modifier.fillMaxWidth())
+                    Button(enabled = !busy, onClick = {
+                        scope.launch {
+                            busy = true
+                            status = try {
+                                require(epgUrl.startsWith("https://", true)) { "HTTPS EPG URL required" }
+                                val xml = withContext(Dispatchers.IO) {
+                                    val client = OkHttpClient.Builder().connectTimeout(15, TimeUnit.SECONDS).readTimeout(90, TimeUnit.SECONDS).build()
+                                    client.newCall(Request.Builder().url(epgUrl.trim()).build()).execute().use {
+                                        check(it.isSuccessful) { "HTTP ${it.code}" }
+                                        it.body?.string() ?: error("Empty EPG response")
+                                    }
+                                }
+                                epgItems = XmlTvParser.parse(xml)
+                                check(epgItems.isNotEmpty()) { "No programme data found in XMLTV" }
+                                prefs.edit().putString("epg_url", epgUrl.trim()).apply()
+                                "EPG loaded: ${epgItems.size} programmes."
+                            } catch (e: Exception) { "EPG error: ${e.message}" }
+                            busy = false
+                        }
+                    }) { Text("Load EPG Guide") }
+                    Text("EPG صرف ان چینلز پر دکھے گا جن کا tvg-id، XMLTV channel ID سے match ہو۔", color = Color.Gray)
+                    Divider()
                     Text("Xtream Codes")
                     OutlinedTextField(server, { server = it }, label = { Text("HTTPS server URL") }, modifier = Modifier.fillMaxWidth())
                     OutlinedTextField(user, { user = it }, label = { Text("Username") }, modifier = Modifier.fillMaxWidth())
@@ -197,6 +225,22 @@ private fun TvApp() {
                     if (active != null) {
                         Text("Playing: ${active!!.name}", color = accent)
                         Text(playerStatus, color = Color.LightGray)
+                        val now = System.currentTimeMillis()
+                        val channelId = active!!.tvgId
+                        val currentProgramme = epgItems.firstOrNull {
+                            channelId != null && it.channelId == channelId && now >= it.startMillis && now < it.stopMillis
+                        }
+                        val nextProgramme = epgItems.firstOrNull {
+                            channelId != null && it.channelId == channelId && it.startMillis > now
+                        }
+                        if (currentProgramme != null) {
+                            Text("Now: ${currentProgramme.title}", color = Color.White)
+                            Text("Until ${DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(currentProgramme.stopMillis))}", color = Color.LightGray)
+                        }
+                        if (nextProgramme != null) Text("Next: ${nextProgramme.title} · ${DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(nextProgramme.startMillis))}", color = Color.LightGray)
+                        if (channelId.isNullOrBlank() || (currentProgramme == null && nextProgramme == null)) {
+                            Text("اس چینل کے لیے EPG دستیاب نہیں؛ tvg-id اور XMLTV IDs چیک کریں۔", color = Color.Gray)
+                        }
                         AndroidView(factory = { PlayerView(it).apply { this.player = playbackEngine } },
                             modifier = Modifier.fillMaxWidth().height(190.dp))
                         Row {
