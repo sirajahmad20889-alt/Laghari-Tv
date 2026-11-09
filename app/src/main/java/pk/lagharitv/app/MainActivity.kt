@@ -36,6 +36,7 @@ import pk.lagharitv.app.data.*
 import java.util.concurrent.TimeUnit
 import java.text.DateFormat
 import java.util.Date
+import java.security.MessageDigest
 
 private val bg = Color(0xFF10121B)
 private val panel = Color(0xFF1B2030)
@@ -74,6 +75,12 @@ private fun TvApp() {
     var episodes by remember { mutableStateOf(emptyList<XtreamStream>()) }
     var autoReloadEnabled by remember { mutableStateOf(prefs.getBoolean("auto_reload_m3u", true)) }
     var lastReloadText by remember { mutableStateOf("Playlist reload status: not yet refreshed") }
+    var pinHash by remember { mutableStateOf(prefs.getString("parental_pin_hash", "") ?: "") }
+    var pinSetup by remember { mutableStateOf("") }
+    var pinDialog by remember { mutableStateOf(false) }
+    var pinEntry by remember { mutableStateOf("") }
+    var lockedDestination by remember { mutableStateOf("") }
+    fun digestPin(value: String): String = MessageDigest.getInstance("SHA-256").digest(value.toByteArray()).joinToString("") { "%02x".format(it) }
     val playlistFilePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) scope.launch {
             busy = true
