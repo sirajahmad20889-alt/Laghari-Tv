@@ -175,10 +175,16 @@ private fun TvApp() {
                 horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 listOf("Live TV", "Movies", "Series", "Favorites", "Recently Watched", "Settings").forEach { item ->
                     Button(onClick = {
-                        tab = item
-                        if (connected && item == "Live TV") loadXtream("live")
-                        if (connected && item == "Movies") loadXtream("movie")
-                        if (connected && item == "Series") loadXtream("series")
+                        if ((item == "Movies" || item == "Series") && pinHash.isNotBlank()) {
+                            lockedDestination = item
+                            pinEntry = ""
+                            pinDialog = true
+                        } else {
+                            tab = item
+                            if (connected && item == "Live TV") loadXtream("live")
+                            if (connected && item == "Movies") loadXtream("movie")
+                            if (connected && item == "Series") loadXtream("series")
+                        }
                     }) { Text(item, maxLines = 1) }
                 }
             }
@@ -233,6 +239,26 @@ private fun TvApp() {
                     }) { Text("Load EPG Guide") }
                     Text("EPG صرف ان چینلز پر دکھے گا جن کا tvg-id، XMLTV channel ID سے match ہو۔", color = Color.Gray)
                     Divider()
+                    Divider()
+                    Text("Parental PIN protection", color = accent)
+                    OutlinedTextField(pinSetup, { pinSetup = it.filter(Char::isDigit).take(6) },
+                        label = { Text("New PIN (4-6 digits)") },
+                        visualTransformation = PasswordVisualTransformation(),
+                        modifier = Modifier.fillMaxWidth())
+                    Button(enabled = pinSetup.length in 4..6, onClick = {
+                        pinHash = digestPin(pinSetup)
+                        prefs.edit().putString("parental_pin_hash", pinHash).apply()
+                        pinSetup = ""
+                        status = "Parental PIN is enabled for Movies and Series."
+                    }) { Text("Set / Change PIN") }
+                    if (pinHash.isNotBlank()) {
+                        TextButton(onClick = {
+                            pinHash = ""
+                            prefs.edit().remove("parental_pin_hash").apply()
+                            status = "Parental PIN disabled."
+                        }) { Text("Disable PIN") }
+                    }
+                    Text("PIN will be required to open Movies and Series.", color = Color.Gray)
                     Text("Xtream Codes")
                     OutlinedTextField(server, { server = it }, label = { Text("HTTPS server URL") }, modifier = Modifier.fillMaxWidth())
                     OutlinedTextField(user, { user = it }, label = { Text("Username") }, modifier = Modifier.fillMaxWidth())
@@ -370,6 +396,29 @@ private fun TvApp() {
                     }
                 }
             }
+        }
+        if (pinDialog) {
+            AlertDialog(
+                onDismissRequest = { pinDialog = false; lockedDestination = "" },
+                title = { Text("Parental PIN") },
+                text = {
+                    OutlinedTextField(pinEntry, { pinEntry = it.filter(Char::isDigit).take(6) },
+                        label = { Text("Enter PIN") }, visualTransformation = PasswordVisualTransformation())
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        if (digestPin(pinEntry) == pinHash) {
+                            val destination = lockedDestination
+                            pinDialog = false
+                            lockedDestination = ""
+                            tab = destination
+                            if (connected && destination == "Movies") loadXtream("movie")
+                            if (connected && destination == "Series") loadXtream("series")
+                        } else { status = "Incorrect PIN. Try again." }
+                    }) { Text("Unlock") }
+                },
+                dismissButton = { TextButton(onClick = { pinDialog = false; lockedDestination = "" }) { Text("Cancel") } }
+            )
         }
     }
 }
