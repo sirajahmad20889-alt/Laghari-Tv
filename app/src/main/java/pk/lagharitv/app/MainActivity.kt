@@ -78,6 +78,7 @@ private fun TvApp() {
     var epgUrl by remember { mutableStateOf(prefs.getString("epg_url", "") ?: "") }
     var epgItems by remember { mutableStateOf(emptyList<EpgProgramme>()) }
     var selectedSeries by remember { mutableStateOf<XtreamStream?>(null) }
+    var selectedSeriesInfo by remember { mutableStateOf<XtreamStream?>(null) }
     var selectedMovie by remember { mutableStateOf<Channel?>(null) }
     var episodes by remember { mutableStateOf(emptyList<XtreamStream>()) }
     var autoReloadEnabled by remember { mutableStateOf(prefs.getBoolean("auto_reload_m3u", true)) }
@@ -164,6 +165,8 @@ private fun TvApp() {
                     Channel(s.name, api.playbackUrl(credentials, s, kind), categories[s.categoryId] ?: "Other", s.logo, null, s.plot, s.rating, s.genre, s.releaseDate, s.duration, s.director, s.cast)
                 }
                 selectedSeries = null
+                selectedSeriesInfo = null
+                selectedMovie = null
                 episodes = emptyList()
                 tab = when (kind) { "movie" -> "Movies"; "series" -> "Series"; else -> "Live TV" }
                 status = "${channels.size} items loaded."
@@ -392,8 +395,23 @@ private fun TvApp() {
                     }
                     if (selectedSeries != null) {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            TextButton(onClick = { selectedSeries = null; episodes = emptyList() }) { Text("← Series") }
-                            Text(selectedSeries!!.name, color = accent)
+                            TextButton(onClick = { selectedSeries = null; selectedSeriesInfo = null; episodes = emptyList() }) { Text("← Series") }
+                            Text(selectedSeriesInfo?.name ?: selectedSeries!!.name, color = accent)
+                        }
+                        selectedSeriesInfo?.let { info ->
+                            Card(Modifier.fillMaxWidth()) {
+                                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    AsyncImage(model = info.logo, contentDescription = info.name,
+                                        modifier = Modifier.fillMaxWidth().height(170.dp))
+                                    info.genre?.let { Text("Genre: $it") }
+                                    info.releaseDate?.let { Text("Release: $it") }
+                                    info.rating?.let { Text("Rating: $it") }
+                                    info.duration?.let { Text("Episode duration: $it") }
+                                    info.director?.let { Text("Director: $it") }
+                                    info.cast?.let { Text("Cast: $it") }
+                                    info.plot?.let { Text(it) }
+                                }
+                            }
                         }
                         if (episodes.isEmpty()) Text("اس سیریز میں اقساط دستیاب نہیں یا ابھی لوڈ نہیں ہوئیں۔", color = Color.LightGray)
                         LazyColumn(verticalArrangement = Arrangement.spacedBy(5.dp)) {
@@ -437,7 +455,11 @@ private fun TvApp() {
                                                 selectedSeries = XtreamStream(series.url.substringAfterLast("/").substringBefore("."), series.name, null, series.logo, null)
                                                 scope.launch {
                                                     busy = true
-                                                    try { episodes = api.seriesEpisodes(XtreamCredentials(server, user, pass), selectedSeries!!.id) }
+                                                    try {
+                                                        val credentials = XtreamCredentials(server, user, pass)
+                                                        selectedSeriesInfo = api.seriesDetails(credentials, selectedSeries!!.id)
+                                                        episodes = api.seriesEpisodes(credentials, selectedSeries!!.id)
+                                                    }
                                                     catch (e: Exception) { status = "Episodes error: ${e.message}" }
                                                     busy = false
                                                 }
