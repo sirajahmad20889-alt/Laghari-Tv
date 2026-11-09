@@ -226,6 +226,10 @@ private fun TvApp() {
                             busy = false
                         }
                     }) { Text("Import M3U") }
+                    OutlinedButton(
+                        enabled = !busy,
+                        onClick = { playlistFilePicker.launch(arrayOf("*/*")) }
+                    ) { Text("Import M3U File from Device") }
                     Divider()
                     Text("EPG / XMLTV Guide")
                     OutlinedTextField(epgUrl, { epgUrl = it }, label = { Text("HTTPS XMLTV URL") }, modifier = Modifier.fillMaxWidth())
