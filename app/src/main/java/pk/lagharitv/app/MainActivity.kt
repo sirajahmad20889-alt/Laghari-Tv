@@ -204,10 +204,15 @@ private fun TvApp() {
     }
 
     val availableCategories = channels.map { it.group?.takeIf(String::isNotBlank) ?: "Other" }.distinct().sorted()
-    val shown = channels.filter {
+    val filteredChannels = channels.filter {
         it.name.contains(query, true) &&
             (selectedCategory == "All" || (it.group?.takeIf(String::isNotBlank) ?: "Other") == selectedCategory) &&
             when (tab) { "Favorites" -> it.url in fav; "Recently Watched" -> it.url in recent; else -> true }
+    }
+    val shown = when (tab) {
+        "Recently Watched" -> filteredChannels.sortedBy { recent.indexOf(it.url).let { index -> if (index < 0) Int.MAX_VALUE else index } }
+        "Favorites" -> filteredChannels.sortedBy { it.name.lowercase() }
+        else -> filteredChannels
     }
     LaunchedEffect(autoReloadEnabled) {
         if (autoReloadEnabled && prefs.getString("m3u", null) != null) {
