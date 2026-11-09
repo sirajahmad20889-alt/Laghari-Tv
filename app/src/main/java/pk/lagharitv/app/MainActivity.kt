@@ -56,7 +56,7 @@ private fun TvApp() {
     var active by remember { mutableStateOf<Channel?>(null) }
     var connected by remember { mutableStateOf(false) }
     val playbackEngine = remember { ExoPlayer.Builder(ctx).build() }
-    DisposableEffect(player) { onDispose { playbackEngine.release() } }
+    DisposableEffect(playbackEngine) { onDispose { playbackEngine.release() } }
 
     fun loadXtream(kind: String) {
         scope.launch {
