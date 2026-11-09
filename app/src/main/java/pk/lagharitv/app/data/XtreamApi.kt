@@ -96,6 +96,26 @@ class XtreamApi {
             )
         }
     }
+    suspend fun seriesDetails(c: XtreamCredentials, seriesId: String): XtreamStream? {
+        val root = JSONObject(get(apiUrl(c, "get_series_info") + "&series_id=${segment(seriesId)}"))
+        val info = root.optJSONObject("info") ?: return null
+        return XtreamStream(
+            id = seriesId,
+            name = info.optString("name", "Series"),
+            categoryId = null,
+            logo = info.optString("cover").takeIf { it.startsWith("http") },
+            extension = null,
+            plot = info.optString("plot").takeIf { it.isNotBlank() && it != "null" },
+            rating = info.optString("rating").takeIf { it.isNotBlank() && it != "null" },
+            genre = info.optString("genre").takeIf { it.isNotBlank() && it != "null" },
+            releaseDate = info.optString("releaseDate").takeIf { it.isNotBlank() && it != "null" }
+                ?: info.optString("release_date").takeIf { it.isNotBlank() && it != "null" },
+            duration = info.optString("episode_run_time").takeIf { it.isNotBlank() && it != "null" },
+            director = info.optString("director").takeIf { it.isNotBlank() && it != "null" },
+            cast = info.optString("cast").takeIf { it.isNotBlank() && it != "null" }
+        )
+    }
+
     suspend fun seriesEpisodes(c: XtreamCredentials, seriesId: String): List<XtreamStream> {
         val raw = get(apiUrl(c, "get_series_info") + "&series_id=${segment(seriesId)}")
         val root = JSONObject(raw)
