@@ -19,6 +19,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
+import androidx.media3.common.PlaybackException
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import kotlinx.coroutines.Dispatchers
@@ -59,6 +61,7 @@ private fun TvApp() {
     var busy by remember { mutableStateOf(false) }
     var active by remember { mutableStateOf<Channel?>(null) }
     var connected by remember { mutableStateOf(false) }
+    var playerStatus by remember { mutableStateOf("Player ready") }
     var selectedSeries by remember { mutableStateOf<XtreamStream?>(null) }
     var episodes by remember { mutableStateOf(emptyList<XtreamStream>()) }
     val playlistFilePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -79,7 +82,28 @@ private fun TvApp() {
         }
     }
     val playbackEngine = remember { ExoPlayer.Builder(ctx).build() }
-    DisposableEffect(playbackEngine) { onDispose { playbackEngine.release() } }
+    DisposableEffect(playbackEngine) {
+        val listener = object : Player.Listener {
+            override fun onPlaybackStateChanged(playbackState: Int) {
+                playerStatus = when (playbackState) {
+                    Player.STATE_BUFFERING -> "Buffering…"
+                    Player.STATE_READY -> "Playing"
+                    Player.STATE_ENDED -> "Playback finished"
+                    Player.STATE_IDLE -> "Player idle"
+                    else -> playerStatus
+                }
+            }
+            override fun onPlayerError(error: PlaybackException) {
+                playerStatus = "Playback error: ${error.errorCodeName}"
+                status = "Stream play نہیں ہو سکی۔ نیٹ ورک یا playlist URL چیک کریں، پھر Retry دبائیں۔"
+            }
+        }
+        playbackEngine.addListener(listener)
+        onDispose {
+            playbackEngine.removeListener(listener)
+            playbackEngine.release()
+        }
+    }
 
     fun rememberWatched(channel: Channel) {
         recent = (listOf(channel.url) + recent.filterNot { it == channel.url }).take(50)
@@ -172,10 +196,11 @@ private fun TvApp() {
                     Text(status, color = Color.LightGray)
                     if (active != null) {
                         Text("Playing: ${active!!.name}", color = accent)
+                        Text(playerStatus, color = Color.LightGray)
                         AndroidView(factory = { PlayerView(it).apply { this.player = playbackEngine } },
                             modifier = Modifier.fillMaxWidth().height(190.dp))
                         Row {
-                            Button(onClick = { playbackEngine.play() }) { Text("Play") }
+                            Button(onClick = { playbackEngine.prepare(); playbackEngine.play() }) { Text("Retry / Play") }
                             OutlinedButton(onClick = { playbackEngine.pause() }) { Text("Pause") }
                             OutlinedButton(onClick = { playbackEngine.stop(); active = null }) { Text("Close") }
                         }
