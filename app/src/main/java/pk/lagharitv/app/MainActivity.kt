@@ -449,6 +449,27 @@ private fun TvApp() {
                                         .clickable {
                                         if (tab == "Movies" && connected) {
                                             selectedMovie = ch
+                                            val movieId = ch.url.substringAfterLast("/").substringBefore(".")
+                                            scope.launch {
+                                                try {
+                                                    val details = api.movieDetails(XtreamCredentials(server, user, pass), movieId)
+                                                    if (details != null) {
+                                                        selectedMovie = ch.copy(
+                                                            name = details.name,
+                                                            logo = details.logo ?: ch.logo,
+                                                            plot = details.plot ?: ch.plot,
+                                                            rating = details.rating ?: ch.rating,
+                                                            genre = details.genre ?: ch.genre,
+                                                            releaseDate = details.releaseDate ?: ch.releaseDate,
+                                                            duration = details.duration ?: ch.duration,
+                                                            director = details.director ?: ch.director,
+                                                            cast = details.cast ?: ch.cast
+                                                        )
+                                                    }
+                                                } catch (e: Exception) {
+                                                    status = "Movie details unavailable: ${e.message}"
+                                                }
+                                            }
                                         } else if (tab == "Series" && connected) {
                                             val series = channels.firstOrNull { it.url == ch.url }
                                             if (series != null) {
