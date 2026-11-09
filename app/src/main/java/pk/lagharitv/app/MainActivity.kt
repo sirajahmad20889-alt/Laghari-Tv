@@ -2,6 +2,8 @@ package pk.lagharitv.app
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -57,6 +59,23 @@ private fun TvApp() {
     var connected by remember { mutableStateOf(false) }
     var selectedSeries by remember { mutableStateOf<XtreamStream?>(null) }
     var episodes by remember { mutableStateOf(emptyList<XtreamStream>()) }
+    val playlistFilePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) scope.launch {
+            busy = true
+            status = try {
+                val raw = withContext(Dispatchers.IO) {
+                    ctx.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
+                        ?: error("Could not open playlist file")
+                }
+                val imported = M3uParser.parse(raw)
+                check(imported.isNotEmpty()) { "No channels found in file" }
+                channels = imported
+                tab = "Live TV"
+                "Imported ${channels.size} channels from file."
+            } catch (e: Exception) { "File import error: ${e.message}" }
+            busy = false
+        }
+    }
     val playbackEngine = remember { ExoPlayer.Builder(ctx).build() }
     DisposableEffect(playbackEngine) { onDispose { playbackEngine.release() } }
 
