@@ -7,6 +7,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -139,19 +141,19 @@ private fun TvApp() {
         it.name.contains(query, true) && when (tab) { "Favorites" -> it.url in fav; "Recently Watched" -> it.url in recent; else -> true }
     }
     MaterialTheme(colorScheme = darkColorScheme(background = bg, surface = panel, primary = accent)) {
-        Row(Modifier.fillMaxSize().background(bg).padding(14.dp)) {
-            Column(Modifier.width(150.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                Text("LAGHARI TV", color = accent, style = MaterialTheme.typography.headlineSmall)
+        Column(Modifier.fillMaxSize().background(bg).padding(10.dp)) {
+            Text("LAGHARI TV", color = accent, style = MaterialTheme.typography.headlineSmall)
+            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 listOf("Live TV", "Movies", "Series", "Favorites", "Recently Watched", "Settings").forEach { item ->
                     Button(onClick = {
                         tab = item
                         if (connected && item == "Live TV") loadXtream("live")
                         if (connected && item == "Movies") loadXtream("movie")
                         if (connected && item == "Series") loadXtream("series")
-                    }, modifier = Modifier.fillMaxWidth()) { Text(item) }
+                    }) { Text(item, maxLines = 1) }
                 }
             }
-            Spacer(Modifier.width(14.dp))
             Column(Modifier.fillMaxSize()) {
                 Text(tab, style = MaterialTheme.typography.headlineMedium, color = Color.White)
                 if (tab == "Settings") {
