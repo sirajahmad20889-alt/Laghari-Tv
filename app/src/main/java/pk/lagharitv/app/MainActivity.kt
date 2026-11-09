@@ -52,6 +52,7 @@ private fun TvApp() {
     var pass by remember { mutableStateOf(prefs.getString("pass", "") ?: "") }
     var channels by remember { mutableStateOf(emptyList<Channel>()) }
     var fav by remember { mutableStateOf(prefs.getStringSet("fav", emptySet())?.toSet() ?: emptySet()) }
+    var recent by remember { mutableStateOf(prefs.getStringSet("recent", emptySet())?.toList()?.take(50) ?: emptyList()) }
     var query by remember { mutableStateOf("") }
     var status by remember { mutableStateOf("Settings میں مجاز M3U یا Xtream اکاؤنٹ شامل کریں۔") }
     var busy by remember { mutableStateOf(false) }
@@ -79,6 +80,11 @@ private fun TvApp() {
     val playbackEngine = remember { ExoPlayer.Builder(ctx).build() }
     DisposableEffect(playbackEngine) { onDispose { playbackEngine.release() } }
 
+    fun rememberWatched(channel: Channel) {
+        recent = (listOf(channel.url) + recent.filterNot { it == channel.url }).take(50)
+        prefs.edit().putStringSet("recent", recent.toSet()).apply()
+    }
+
     fun loadXtream(kind: String) {
         scope.launch {
             busy = true
@@ -99,13 +105,13 @@ private fun TvApp() {
     }
 
     val shown = channels.filter {
-        it.name.contains(query, true) && (tab != "Favorites" || it.url in fav)
+        it.name.contains(query, true) && when (tab) { "Favorites" -> it.url in fav; "Recently Watched" -> it.url in recent; else -> true }
     }
     MaterialTheme(colorScheme = darkColorScheme(background = bg, surface = panel, primary = accent)) {
         Row(Modifier.fillMaxSize().background(bg).padding(14.dp)) {
             Column(Modifier.width(150.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                 Text("LAGHARI TV", color = accent, style = MaterialTheme.typography.headlineSmall)
-                listOf("Live TV", "Movies", "Series", "Favorites", "Settings").forEach { item ->
+                listOf("Live TV", "Movies", "Series", "Favorites", "Recently Watched", "Settings").forEach { item ->
                     Button(onClick = {
                         tab = item
                         if (connected && item == "Live TV") loadXtream("live")
@@ -185,6 +191,7 @@ private fun TvApp() {
                                     val credentials = XtreamCredentials(server, user, pass)
                                     val episodeUrl = api.playbackUrl(credentials, episode, "series")
                                     active = Channel(episode.name, episodeUrl, "Episode")
+                                    rememberWatched(active!!)
                                     playbackEngine.setMediaItem(MediaItem.fromUri(episodeUrl))
                                     playbackEngine.prepare()
                                     playbackEngine.play()
@@ -211,6 +218,7 @@ private fun TvApp() {
                                             }
                                         } else {
                                             active = ch
+                                            rememberWatched(ch)
                                             playbackEngine.setMediaItem(MediaItem.fromUri(ch.url))
                                             playbackEngine.prepare()
                                             playbackEngine.play()
