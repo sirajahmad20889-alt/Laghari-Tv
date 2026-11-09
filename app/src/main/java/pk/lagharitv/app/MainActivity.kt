@@ -69,6 +69,7 @@ private fun TvApp() {
     var active by remember { mutableStateOf<Channel?>(null) }
     var connected by remember { mutableStateOf(false) }
     var playerStatus by remember { mutableStateOf("Player ready") }
+    var fullscreen by remember { mutableStateOf(false) }
     var epgUrl by remember { mutableStateOf(prefs.getString("epg_url", "") ?: "") }
     var epgItems by remember { mutableStateOf(emptyList<EpgProgramme>()) }
     var selectedSeries by remember { mutableStateOf<XtreamStream?>(null) }
