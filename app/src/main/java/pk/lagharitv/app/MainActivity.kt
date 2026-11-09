@@ -55,6 +55,8 @@ private fun TvApp() {
     var busy by remember { mutableStateOf(false) }
     var active by remember { mutableStateOf<Channel?>(null) }
     var connected by remember { mutableStateOf(false) }
+    var selectedSeries by remember { mutableStateOf<XtreamStream?>(null) }
+    var episodes by remember { mutableStateOf(emptyList<XtreamStream>()) }
     val playbackEngine = remember { ExoPlayer.Builder(ctx).build() }
     DisposableEffect(playbackEngine) { onDispose { playbackEngine.release() } }
 
@@ -63,10 +65,13 @@ private fun TvApp() {
             busy = true
             try {
                 val credentials = XtreamCredentials(server, user, pass)
+                val categories = api.categories(credentials, kind).associate { it.id to it.name }
                 val streams = api.streams(credentials, kind)
                 channels = streams.map { s ->
-                    Channel(s.name, api.playbackUrl(credentials, s, kind), s.categoryId ?: "Other", s.logo)
+                    Channel(s.name, api.playbackUrl(credentials, s, kind), categories[s.categoryId] ?: "Other", s.logo)
                 }
+                selectedSeries = null
+                episodes = emptyList()
                 tab = when (kind) { "movie" -> "Movies"; "series" -> "Series"; else -> "Live TV" }
                 status = "${channels.size} items loaded."
             } catch (e: Exception) { status = "Catalog error: ${e.message}" }
@@ -149,16 +154,48 @@ private fun TvApp() {
                         }
                     }
                     OutlinedTextField(query, { query = it }, label = { Text("Search") }, modifier = Modifier.fillMaxWidth())
-                    if (shown.isEmpty()) Text("M3U import کریں یا Xtream connect کریں۔", color = Color.LightGray)
+                    if (selectedSeries != null) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            TextButton(onClick = { selectedSeries = null; episodes = emptyList() }) { Text("← Series") }
+                            Text(selectedSeries!!.name, color = accent)
+                        }
+                        if (episodes.isEmpty()) Text("اس سیریز میں اقساط دستیاب نہیں یا ابھی لوڈ نہیں ہوئیں۔", color = Color.LightGray)
+                        LazyColumn(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                            items(episodes) { episode ->
+                                Card(Modifier.fillMaxWidth().clickable {
+                                    val credentials = XtreamCredentials(server, user, pass)
+                                    val episodeUrl = api.playbackUrl(credentials, episode, "series")
+                                    active = Channel(episode.name, episodeUrl, "Episode")
+                                    playbackEngine.setMediaItem(MediaItem.fromUri(episodeUrl))
+                                    playbackEngine.prepare()
+                                    playbackEngine.play()
+                                }) { Text(episode.name, color = Color.White, modifier = Modifier.padding(12.dp)) }
+                            }
+                        }
+                    }
+                    if (shown.isEmpty() && selectedSeries == null) Text("M3U import کریں یا Xtream connect کریں۔", color = Color.LightGray)
                     LazyColumn(verticalArrangement = Arrangement.spacedBy(5.dp)) {
                         items(shown) { ch ->
                             Card(Modifier.fillMaxWidth()) {
                                 Row(Modifier.fillMaxWidth().padding(10.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                                     Column(Modifier.weight(1f).clickable {
-                                        active = ch
-                                        playbackEngine.setMediaItem(MediaItem.fromUri(ch.url))
-                                        playbackEngine.prepare()
-                                        playbackEngine.play()
+                                        if (tab == "Series" && connected) {
+                                            val series = channels.firstOrNull { it.url == ch.url }
+                                            if (series != null) {
+                                                selectedSeries = XtreamStream(series.url.substringAfterLast("/").substringBefore("."), series.name, null, series.logo, null)
+                                                scope.launch {
+                                                    busy = true
+                                                    try { episodes = api.seriesEpisodes(XtreamCredentials(server, user, pass), selectedSeries!!.id) }
+                                                    catch (e: Exception) { status = "Episodes error: ${e.message}" }
+                                                    busy = false
+                                                }
+                                            }
+                                        } else {
+                                            active = ch
+                                            playbackEngine.setMediaItem(MediaItem.fromUri(ch.url))
+                                            playbackEngine.prepare()
+                                            playbackEngine.play()
+                                        }
                                     }) {
                                         Text(ch.name, color = Color.White)
                                         Text(ch.group ?: "Other", color = Color.LightGray)
