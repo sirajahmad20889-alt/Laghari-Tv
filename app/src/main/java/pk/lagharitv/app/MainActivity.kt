@@ -19,10 +19,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.MediaItem
+import androidx.media3.common.C
 import androidx.media3.common.Player
 import androidx.media3.common.PlaybackException
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
+import androidx.media3.ui.TrackSelectionDialogBuilder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -241,8 +243,21 @@ private fun TvApp() {
                         if (channelId.isNullOrBlank() || (currentProgramme == null && nextProgramme == null)) {
                             Text("اس چینل کے لیے EPG دستیاب نہیں؛ tvg-id اور XMLTV IDs چیک کریں۔", color = Color.Gray)
                         }
-                        AndroidView(factory = { PlayerView(it).apply { this.player = playbackEngine } },
-                            modifier = Modifier.fillMaxWidth().height(190.dp))
+                        AndroidView(factory = { PlayerView(it).apply {
+                            this.player = playbackEngine
+                            useController = true
+                            controllerAutoShow = true
+                        } }, modifier = Modifier.fillMaxWidth().height(210.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            OutlinedButton(onClick = {
+                                TrackSelectionDialogBuilder(ctx, "Audio tracks", playbackEngine, C.TRACK_TYPE_AUDIO)
+                                    .build().show()
+                            }) { Text("Audio") }
+                            OutlinedButton(onClick = {
+                                TrackSelectionDialogBuilder(ctx, "Subtitles", playbackEngine, C.TRACK_TYPE_TEXT)
+                                    .build().show()
+                            }) { Text("Subtitles") }
+                        }
                         Row {
                             Button(onClick = { playbackEngine.prepare(); playbackEngine.play() }) { Text("Retry / Play") }
                             OutlinedButton(onClick = { playbackEngine.pause() }) { Text("Pause") }
